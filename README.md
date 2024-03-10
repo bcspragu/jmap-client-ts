@@ -1,3 +1,13 @@
+This fork does the following:
+
+- Updates all the deps to latest
+- Adds a bunch of JMAP types (Identity, Blob, EmailSubmission, etc) that were missing, as well as responses and various missing fields.
+- Removes the actual client itself, this repo is just types
+- Removes all the Git hooks and JS libs aside from ESLint
+- Removes other adjacent files (Jest, Jenkins, etc)
+
+Basically, this repo is stripped to just the types, and those have been updated
+
 # jmap-client-ts
 
 A [Jmap](https://jmap.io/spec.html) Client written in Typescript.
