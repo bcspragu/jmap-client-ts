@@ -2,15 +2,19 @@ export type IMethodName =
   | 'Mailbox/get'
   | 'Mailbox/changes'
   | 'Mailbox/set'
+  | 'Mailbox/query'
   | 'Email/get'
   | 'Email/changes'
   | 'Email/query'
   | 'Email/set'
+  | 'Email/queryChanges'
   | 'Email/import'
   | 'Thread/get'
   | 'EmailSubmission/get'
   | 'EmailSubmission/changes'
-  | 'EmailSubmission/set';
+  | 'EmailSubmission/set'
+  | 'Identity/get'
+  | 'Blob/get';
 
 export type IErrorName = 'error';
 
@@ -29,7 +33,17 @@ export type IEntityProperties =
   | IMailboxProperties
   | IEmailProperties
   | IEmailSubmissionProperties
-  | IThreadProperties;
+  | IThreadProperties
+  | IBlobProperties
+  | IIdentityProperties;
+
+export type IResponseProperties =
+  | IMailboxProperties
+  | IEmailProperties
+  | IEmailSubmissionProperties
+  | IThreadProperties
+  | IBlobProperties
+  | IIdentityProperties;
 
 /**
  * See https://jmap.io/spec-core.html#query
@@ -39,8 +53,20 @@ export type IFilterCondition = IMailboxFilterCondition | IEmailFilterCondition;
 export type IArguments =
   | IGetArguments<IEntityProperties>
   | ISetArguments<IEntityProperties>
-  | IQueryArguments<IEmailFilterCondition>
-  | IChangesArguments;
+  | IQueryArguments<IFilterCondition>
+  | IChangesArguments
+  | IQueryChangesArguments
+  | IEmailSubmissionSetArguments
+  | IEmailGetArguments;
+
+export type IResponseArguments =
+  | IGetResponse<IEntityProperties>
+  | ISetResponse<IEntityProperties>
+  | IQueryResponse
+  | IChangesResponse
+  | IQueryChangesResponse
+  | IError;
+
 export interface IReplaceableAccountId {
   /**
    * If null, the library will replace its value by default account id.
@@ -48,12 +74,24 @@ export interface IReplaceableAccountId {
   accountId: string | null;
 }
 
+type RefKey = `#${string}`;
+
+// 'keyof IEntityProperties', for example, will just be 'id', so we use this approach.
+type KeysOfUnion<T> = T extends any ? keyof T : never;
+
 /**
  * See https://jmap.io/spec-core.html#get
  */
 export interface IGetArguments<Properties extends IEntityProperties> extends IReplaceableAccountId {
   ids: string[] | null;
-  properties?: (keyof Properties)[];
+  properties?: KeysOfUnion<Properties>[];
+  [ref: RefKey]: ResultReference;
+}
+
+export interface ResultReference {
+ resultOf: string;
+ name: string;
+ path: string;
 }
 
 /**
@@ -74,6 +112,11 @@ export interface IChangesArguments extends IReplaceableAccountId {
   maxChanges?: number | null;
 }
 
+export interface IQueryChangesArguments extends IReplaceableAccountId {
+  sinceQueryState: string;
+  maxChanges?: number | null;
+}
+
 /**
  * See https://jmap.io/spec-core.html#changes
  */
@@ -85,6 +128,20 @@ export interface IChangesResponse {
   created: string[];
   updated: string[];
   destroyed: string[];
+}
+
+export interface IQueryChangesResponse {
+  accountId: string // Id The id of the account used for the call.
+  oldQueryState: string // String This is the sinceQueryState argument echoed back; that is, the state from which the server is returning changes.
+  newQueryState: string // String This is the state the query will be in after applying the set of changes to the old state.
+  total?: number // UnsignedInt (only if requested) The total number of Foos in the results (given the filter). This argument MUST be omitted if the calculateTotal request argument is not true.
+  removed?: string[] // Id[] The id for every Foo that was in the query results in the old state and that is not in the results in the new state.
+  added?: IAddedItem[] // AddedItem[] The id and index in the query results (in the new state) for every Foo that has been added to the results since the old state AND every Foo in the current results that was included in the removed array (due to a filter or sort based upon a mutable property).
+}
+
+export interface IAddedItem {
+ id: string
+ index: number
 }
 
 /**
@@ -167,6 +224,12 @@ export interface IRequest {
   using: string[];
   methodCalls: IInvocation<IArguments>[];
   createdIds?: { [creationId: string]: string };
+}
+
+export interface IResponse {
+  methodResponses: IInvocation<IResponseArguments>[];
+  createdIds?: { [creationId: string]: string };
+  sessionState: string;
 }
 
 /**
@@ -259,11 +322,32 @@ export interface IEmailProperties {
   size: number;
   preview: string;
   attachments: Attachment[] | null;
+  hasAttachment: boolean;
   createdModSeq: number;
   updatedModSeq: number;
   receivedAt: IUtcDate;
   headers: EmailHeader[] | null;
 }
+
+export interface IIdentityGetArguments extends IGetArguments<IIdentityProperties> {
+  bodyProperties?: string[];
+  fetchTextBodyValues?: boolean;
+  fetchHTMLBodyValues?: boolean;
+  fetchAllBodyValues?: boolean;
+  maxBodyValueBytes?: number;
+}
+
+export interface IIdentityProperties {
+  id: string // Id (immutable; server-set) The id of the Identity.
+  name: string // String (default: “”) The “From” name the client SHOULD use when creating a new Email from this Identity.
+  email: string // String (immutable) The “From” email address the client MUST use when creating a new Email from this Identity. If the mailbox part of the address (the section before the “@”) is the single character * (e.g., *@example.com) then the client may use any valid address ending in that domain (e.g., foo@example.com).
+  replyTo?: IEmailAddress[] // EmailAddress[]|null (default: null) The Reply-To value the client SHOULD set when creating a new Email from this Identity.
+  bcc?: IEmailAddress[] // EmailAddress[]|null (default: null) The Bcc value the client SHOULD set when creating a new Email from this Identity.
+  textSignature: string // String (default: “”) A signature the client SHOULD insert into new plaintext messages that will be sent from this Identity. Clients MAY ignore this and/or combine this with a client-specific signature preference.
+  htmlSignature: string // String (default: “”) A signature the client SHOULD insert into new HTML messages that will be sent from this Identity. This text MUST be an HTML snippet to be inserted into the <body></body> section of the HTML. Clients MAY ignore this and/or combine this with a client-specific signature preference.
+  mayDelete?: boolean // Boolean (server-set) Is the user allowed to delete this Identity? Servers may wish to set this to false for the user’s username or other default address. Attempts to destroy an Identity with mayDelete: false will be rejected with a standard forbidden SetError.
+}
+
 
 export type IUtcDate = string;
 export type ITrue = true;
@@ -301,6 +385,8 @@ export interface IThreadProperties {
 export type IThreadGetArguments = IGetArguments<IThreadProperties>;
 
 export type IThreadGetResponse = IGetResponse<IThreadProperties>;
+
+export type IIdentityGetResponse = IGetResponse<IIdentityProperties>;
 
 /**
  * See https://jmap.io/spec-core.html#uploading-binary-data
@@ -345,6 +431,13 @@ export interface IMailboxRights {
   mayCreateChild: boolean;
   mayRename: boolean;
   mayDelete: boolean;
+}
+
+export interface IBlobProperties {
+  id: string;
+  size: number;
+  'data:asText': string;
+  'digest:sha': string;
 }
 
 /**
@@ -453,8 +546,8 @@ export type IThreadChangesResponse = IChangesResponse;
  */
 export interface IEmailBodyValue {
   value: string;
-  isEncodingProblem: boolean;
-  isTruncated: boolean;
+  isEncodingProblem?: boolean;
+  isTruncated?: boolean;
 }
 
 /**
@@ -526,6 +619,8 @@ export interface IEmailFilterCondition {
   body?: string;
   header?: string[];
 }
+
+export type IBlobGetResponse = IGetResponse<IBlobProperties>;
 
 export type IEmailGetResponse = IGetResponse<IEmailProperties>;
 
