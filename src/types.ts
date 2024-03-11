@@ -288,7 +288,7 @@ export interface EmailHeader {
   value: string
 }
 
-export type Attachment = File
+export type Attachment = IEmailBodyPart
 
 /**
  * See https://jmap.io/spec-mail.html#emailget

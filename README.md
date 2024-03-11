@@ -5,6 +5,7 @@ This fork does the following:
 - Removes the actual client itself, this repo is just types
 - Removes all the Git hooks and JS libs aside from ESLint
 - Removes other adjacent files (Jest, Jenkins, etc)
+- Attachments are `IEmailBodyPart`, not `File`
 
 Basically, this repo is stripped to just the types, and those have been updated
 
