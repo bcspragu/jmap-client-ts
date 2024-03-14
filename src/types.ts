@@ -58,6 +58,7 @@ export type IArguments =
   | IQueryChangesArguments
   | IEmailSubmissionSetArguments
   | IEmailGetArguments
+  | IEmailQueryArguments
 
 export type IResponseArguments =
   | IGetResponse<IEntityProperties>
@@ -196,7 +197,9 @@ export interface IQueryResponse {
   limit?: number
 }
 
-export type IEmailQueryArguments = IQueryArguments<IEmailFilterCondition>
+export interface IEmailQueryArguments extends IQueryArguments<IEmailFilterCondition> {
+  collapseThreads?: boolean
+}
 
 export type IEmailQueryResponse = IQueryResponse
 

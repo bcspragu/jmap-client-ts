@@ -1,6 +1,6 @@
 {
   "name": "@stonetoast/jmap-client-ts",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Jmap Library in Typescript",
   "main": "lib/index.js",
   "scripts": {
