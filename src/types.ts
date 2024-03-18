@@ -309,6 +309,9 @@ export interface IEmailGetArguments extends IGetArguments<IEmailProperties> {
  */
 export interface IEmailProperties {
   id: string
+  messageId?: string[]
+  inReplyTo?: string[]
+  references?: string[]
   blobId: string
   threadId: string
   mailboxIds: Record<string, boolean>
