@@ -318,7 +318,10 @@ export interface IEmailProperties {
   keywords: IEmailKeywords
   from: IEmailAddress[] | null
   to: IEmailAddress[] | null
+  cc: IEmailAddress[] | null
+  bcc: IEmailAddress[] | null
   bodyValues: Record<string, IEmailBodyValue> | null
+  bodyStructure: Partial<IEmailBodyPart> | null
   textBody: Array<Partial<IEmailBodyPart>> | null
   htmlBody: Array<Partial<IEmailBodyPart>> | null
   subject: string
